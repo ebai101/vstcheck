@@ -16,7 +16,7 @@ def check_exec(plug_dir):
     result = {}
     plugs = []
 
-    print(f"Scanning {plug_dir} ...")
+    print(f"Scanning {plug_dir} ...", file=sys.stderr)
 
     # get plugin names
     reg_compile = re.compile(".*\.vst")
