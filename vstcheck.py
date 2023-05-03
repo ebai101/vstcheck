@@ -12,12 +12,6 @@ vst_directories = [
 ]
 
 
-def check_for_lipo():
-    from shutil import which
-
-    return which("lipo") is not None
-
-
 def check_exec(plug_dir):
     result = {}
     plugs = []
@@ -34,7 +28,7 @@ def check_exec(plug_dir):
     # read architecture of executables
     for plug in plugs:
         exe_file = [f for f in os.listdir(f"{plug}/Contents/MacOS")]
-        exe_cmd = f'lipo -archs "{plug}/Contents/MacOS/{exe_file[0]}"'
+        exe_cmd = f'file "{plug}/Contents/MacOS/{exe_file[0]}"'
         exe = subprocess.Popen(exe_cmd, shell=True, stdout=subprocess.PIPE)
         out = exe.stdout.read().strip().decode()
         if not out in result:
@@ -50,18 +44,11 @@ def check_exec(plug_dir):
 
 def print_results(res):
     for key in res:
-        print(key)
         for val in res[key]:
-            print(f"\t{val}")
+            print(f"{val}")
 
 
 if __name__ == "__main__":
-    if not check_for_lipo():
-        print("lipo executable not found in PATH")
-        print("you may need to install xcode commandline tools by running:")
-        print("\t xcode-select --install")
-        sys.exit(1)
-
     result_list = [check_exec(d) for d in vst_directories]
     result_final = {}
     for result in result_list:
