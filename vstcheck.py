@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # lists all VSTs that are not arm64 compatible
 
-import os, sys, subprocess
+from os import walk, listdir
+from sys import stderr
 from itertools import chain
+from subprocess import Popen, PIPE
 from concurrent.futures import ProcessPoolExecutor
 
 # you may want to add more directories to this list
@@ -15,18 +17,18 @@ vst_directories = [
 
 
 def get_arch_info(plug):
-    exe_path = [f for f in os.listdir(f"{plug}/Contents/MacOS")]
+    exe_path = [f for f in listdir(f"{plug}/Contents/MacOS")]
     file_cmd = f'file "{plug}/Contents/MacOS/{exe_path[0]}"'
-    cmd_out = subprocess.Popen(file_cmd, shell=True, stdout=subprocess.PIPE)
+    cmd_out = Popen(file_cmd, shell=True, stdout=PIPE)
     return cmd_out.stdout.read().strip().decode()
 
 
 def check_exec(plug_dir):
-    print(f"Scanning {plug_dir} ...", file=sys.stderr)
+    print(f"Scanning {plug_dir} ...", file=stderr)
 
     # get plugin names
     plugs = []
-    for dirpath, dirnames, filenames in os.walk(plug_dir):
+    for dirpath, dirnames, filenames in walk(plug_dir):
         plugs += [f"{dirpath}/{dirname}" for dirname in dirnames if "vst" in dirname]
 
     # read architecture of executables
