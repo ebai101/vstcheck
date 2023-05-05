@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # lists all VSTs that are not arm64 compatible
 
-import os, re, sys, subprocess
+import os, sys, subprocess
 from itertools import chain
 from concurrent.futures import ProcessPoolExecutor
 
@@ -26,11 +26,8 @@ def check_exec(plug_dir):
 
     # get plugin names
     plugs = []
-    reg_compile = re.compile(".*\.vst")
     for dirpath, dirnames, filenames in os.walk(plug_dir):
-        plugs += [
-            f"{dirpath}/{dirname}" for dirname in dirnames if reg_compile.match(dirname)
-        ]
+        plugs += [f"{dirpath}/{dirname}" for dirname in dirnames if "vst" in dirname]
 
     # read architecture of executables
     result = []
