@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # lists all VSTs that are not arm64 compatible
 
-import os, sys, subprocess, re
-import concurrent.futures
+import os, re, sys, subprocess
+from itertools import chain
+from concurrent.futures import ProcessPoolExecutor
 
 # you may want to add more directories to this list
 vst_directories = [
@@ -14,52 +15,33 @@ vst_directories = [
 
 
 def get_arch_info(plug):
-    exe_file = [f for f in os.listdir(f"{plug}/Contents/MacOS")]
-    exe_cmd = f'file "{plug}/Contents/MacOS/{exe_file[0]}"'
-    exe = subprocess.Popen(exe_cmd, shell=True, stdout=subprocess.PIPE)
-    return exe.stdout.read().strip().decode()
+    exe_path = [f for f in os.listdir(f"{plug}/Contents/MacOS")]
+    file_cmd = f'file "{plug}/Contents/MacOS/{exe_path[0]}"'
+    cmd_out = subprocess.Popen(file_cmd, shell=True, stdout=subprocess.PIPE)
+    return cmd_out.stdout.read().strip().decode()
 
 
 def check_exec(plug_dir):
-    result = {}
-    plugs = []
-
     print(f"Scanning {plug_dir} ...", file=sys.stderr)
 
     # get plugin names
+    plugs = []
     reg_compile = re.compile(".*\.vst")
     for dirpath, dirnames, filenames in os.walk(plug_dir):
-        plugs = plugs + [
+        plugs += [
             f"{dirpath}/{dirname}" for dirname in dirnames if reg_compile.match(dirname)
         ]
 
     # read architecture of executables
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        for plug, out in zip(plugs, executor.map(get_arch_info, plugs)):
-            if not out in result:
-                result[out] = []
-            result[out].append(plug)
+    result = []
+    with ProcessPoolExecutor() as executor:
+        for plug, arch_info in zip(plugs, executor.map(get_arch_info, plugs)):
+            if not "arm64" in arch_info:
+                result.append(plug)
 
-    # remove already compatible plugins
-    delete = [key for key in result if "arm64" in key]
-    for key in delete:
-        del result[key]
     return result
 
 
-def print_results(res):
-    for key in res:
-        for val in res[key]:
-            print(f"{val}")
-
-
 if __name__ == "__main__":
-    result_list = [check_exec(d) for d in vst_directories]
-    result_final = {}
-    for result in result_list:
-        for key in result.keys():
-            if not key in result_final:
-                result_final[key] = result[key]
-            else:
-                result_final[key] += result[key]
-    print_results(result_final)
+    results = list(chain.from_iterable([check_exec(d) for d in vst_directories]))
+    [print(vst) for vst in results]
