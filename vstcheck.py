@@ -2,6 +2,7 @@
 # lists all VSTs that are not arm64 compatible
 
 import os, sys, subprocess, re
+import concurrent.futures
 
 # you may want to add more directories to this list
 vst_directories = [
@@ -10,6 +11,13 @@ vst_directories = [
     "~/Library/Audio/Plug-Ins/VST",
     "~/Library/Audio/Plug-Ins/VST3",
 ]
+
+
+def get_arch_info(plug):
+    exe_file = [f for f in os.listdir(f"{plug}/Contents/MacOS")]
+    exe_cmd = f'file "{plug}/Contents/MacOS/{exe_file[0]}"'
+    exe = subprocess.Popen(exe_cmd, shell=True, stdout=subprocess.PIPE)
+    return exe.stdout.read().strip().decode()
 
 
 def check_exec(plug_dir):
@@ -26,14 +34,11 @@ def check_exec(plug_dir):
         ]
 
     # read architecture of executables
-    for plug in plugs:
-        exe_file = [f for f in os.listdir(f"{plug}/Contents/MacOS")]
-        exe_cmd = f'file "{plug}/Contents/MacOS/{exe_file[0]}"'
-        exe = subprocess.Popen(exe_cmd, shell=True, stdout=subprocess.PIPE)
-        out = exe.stdout.read().strip().decode()
-        if not out in result:
-            result[out] = []
-        result[out].append(plug)
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for plug, out in zip(plugs, executor.map(get_arch_info, plugs)):
+            if not out in result:
+                result[out] = []
+            result[out].append(plug)
 
     # remove already compatible plugins
     delete = [key for key in result if "arm64" in key]
